@@ -40,41 +40,68 @@
         const postsMap = {};
 
         function renderPost(post) {
-            
-            // Creates or updates a post element in the DOM based on post data.
+            // Check if the post already exists in the posts container
+            let postElement = postsMap[post.id];
+
+            if (!postElement) {
+                // Create a new post element if it does not exist
+                postElement = document.createElement('div');
+                postElement.className = 'post';
+                postElement.id = `post-${post.id}`;
+
+                // Create the like button
+                const likeButton = document.createElement('button');
+                likeButton.className = 'like-btn';
+                likeButton.textContent = 'Like';
+                likeButton.onclick = () => likePost(post.id);
+
+                // Append the title, like count, and button to the post element
+                postElement.innerHTML = `
+                        <h3>${post.content}</h3>
+                        <p><strong>Likes:</strong> <span class="likes">${post.likes}</span></p>
+                    `;
+                postElement.appendChild(likeButton);
+
+                // Add the new post element to the posts container
+                postsContainer.appendChild(postElement);
+
+                // Store the element in the map for later updates
+                postsMap[post.id] = postElement;
+            } else {
+                // Update the like count for an existing post element
+                postElement.querySelector('.likes').textContent = post.likes;
+            }
         }
 
         function likePost(id) {
-           // fetch(`/api/posts/${id}/like`, { method: 'POST' })
-            // Sends a POST request to like a specific post by its ID.
-
-            //<div class="post" id="post-1">
-            //    <h3>Hello World!</h3>
-            //    <p><strong>Likes:</strong> <span class="likes">0</span></p>
-            //    <button class="like-btn" onclick="likePost(1)">Like</button>
-            //</div>
+            // Sends a POST request to like a specific post by its ID
+            fetch(`/api/posts/${id}/like`, { method: 'POST' })
+                .then(response => response.json())
+                .then(post => {
+                    renderPost(post); // Re-render the post to update the like count
+                });
         }
 
         // Initial load of posts
-        // Runs after the DOM is fully loaded; initializes posts and SSE subscription.
         document.addEventListener("DOMContentLoaded", function () {
+            // Fetch all posts from the API and render them initially on page load
+            fetch('/api/posts')
+                .then(response => response.json())
+                .then(posts => {
+                    posts.forEach(post => renderPost(post));
+                });
 
-            // fetch('/api/posts')
-            // Fetches all posts from the API and renders them initially on page load.
-
-            // Subscribe to live updates
-            // Opens a Server-Sent Events (SSE) connection to receive live updates from the server.
-            //const evtSource = new EventSource("/api/subscribe");
-
+            // Subscribe to live updates using Server-Sent Events (SSE)
+            const evtSource = new EventSource("/api/subscribe");
 
             evtSource.onmessage = function (event) {
-                // Handles incoming live post updates and re-renders them in real time.
-               // console.log("Received update:", post);
-               // renderPost(post); // re-render on update
+                // Handle incoming live post updates
+                const post = JSON.parse(event.data);
+                renderPost(post); // Re-render the post to update the like count
             };
 
             evtSource.onerror = function (error) {
-                // Handles SSE connection errors by logging them.
+                // Log errors if SSE connection fails
                 console.error("EventSource failed:", error);
             };
         });

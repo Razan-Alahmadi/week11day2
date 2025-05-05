@@ -15,21 +15,18 @@ namespace ReactiveLikeApiDemo.Services
 
         static BroadcastService()
         {
-            //_rateLimitedStream = DataStore.PostSubject
+            _rateLimitedStream = DataStore.PostSubject
+                .GroupBy(post => post.Id) // Group updates by post ID
+                .SelectMany(group => group.Throttle(BroadcastInterval)) // Emit only the latest after silence
+                .Publish(); // Make the stream hot (shared)
 
-            // Groups incoming updates by post ID.
-            // Only takes the latest update every 2 seconds.
-            // Makes the observable hot (shared among subscribers).
-            // Starts emitting values to subscribers.
-
-           // _rateLimitedStream.Connect();
+            _rateLimitedStream.Connect(); // Start emitting values
         }
 
         public static IDisposable Subscribe(Action<Post> onNext)
         {
-
-           // return _rateLimitedStream.Subscribe(onNext);
             // Allows consumers to receive rate-limited post updates.
+            return _rateLimitedStream.Subscribe(onNext);
         }
     }
 }
